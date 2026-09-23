@@ -70,6 +70,8 @@ function ProductDashboardContent() {
     };
   }, []);
 
+  const { page, limit, q, category, sortBy, order, delay } = filterParams;
+
   // Fetch Products function with AbortController for race condition protection
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -79,7 +81,10 @@ function ProductDashboardContent() {
     const currentRequestId = ++requestIdRef.current;
 
     try {
-      const data = await productService.getProducts(filterParams, controller.signal);
+      const data = await productService.getProducts(
+        { page, limit, q, category, sortBy, order, delay },
+        controller.signal
+      );
 
       // Only update state if this is still the latest request
       if (currentRequestId === requestIdRef.current) {
@@ -87,7 +92,7 @@ function ProductDashboardContent() {
         const { products: mergedList, total: mergedTotal } = mergeWithOverlay(
           data.products,
           data.total,
-          filterParams.page
+          page
         );
 
         setProducts(mergedList);
@@ -105,7 +110,7 @@ function ProductDashboardContent() {
         setIsLoading(false);
       }
     }
-  }, [filterParams, mergeWithOverlay]);
+  }, [page, limit, q, category, sortBy, order, delay, mergeWithOverlay]);
 
   useEffect(() => {
     fetchProducts();

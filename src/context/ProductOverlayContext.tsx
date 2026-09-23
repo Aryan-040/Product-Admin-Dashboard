@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Product, ProductFormData } from '@/types/product';
 
 interface ProductOverlayContextType {
@@ -59,9 +59,9 @@ export function ProductOverlayProvider({ children }: { children: React.ReactNode
     }
   }, [addedProducts, editedProducts, deletedProductIds, isInitialized]);
 
-  const addLocalProduct = (data: ProductFormData, apiReturnedProduct?: Partial<Product>): Product => {
+  const addLocalProduct = useCallback((data: ProductFormData, apiReturnedProduct?: Partial<Product>): Product => {
     const newProduct: Product = {
-      id: apiReturnedProduct?.id || Date.now(), // Generate unique numeric ID
+      id: apiReturnedProduct?.id || Date.now(),
       title: data.title,
       description: data.description,
       category: data.category,
@@ -77,15 +77,13 @@ export function ProductOverlayProvider({ children }: { children: React.ReactNode
 
     setAddedProducts((prev) => [newProduct, ...prev]);
     return newProduct;
-  };
+  }, []);
 
-  const updateLocalProduct = (id: number, data: Partial<ProductFormData>) => {
-    // If it's a locally added product, update it in addedProducts
+  const updateLocalProduct = useCallback((id: number, data: Partial<ProductFormData>) => {
     setAddedProducts((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...data } : p))
     );
 
-    // Also update in editedProducts map
     setEditedProducts((prev) => ({
       ...prev,
       [id]: {
@@ -93,62 +91,58 @@ export function ProductOverlayProvider({ children }: { children: React.ReactNode
         ...data,
       },
     }));
-  };
+  }, []);
 
-  const deleteLocalProduct = (id: number) => {
-    // Remove from added products if locally created
+  const deleteLocalProduct = useCallback((id: number) => {
     setAddedProducts((prev) => prev.filter((p) => p.id !== id));
-    // Add to deleted IDs array
     setDeletedProductIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-  };
+  }, []);
 
-  const mergeWithOverlay = (
-    apiProducts: Product[],
-    totalCount: number,
-    page: number
-  ): { products: Product[]; total: number } => {
-    // 1. Filter out deleted products
-    let list = apiProducts.filter((p) => !deletedProductIds.includes(p.id));
+  const mergeWithOverlay = useCallback(
+    (apiProducts: Product[], totalCount: number, page: number): { products: Product[]; total: number } => {
+      let list = apiProducts.filter((p) => !deletedProductIds.includes(p.id));
 
-    // 2. Apply local edits to remaining items
-    list = list.map((p) => {
-      if (editedProducts[p.id]) {
-        return {
-          ...p,
-          ...editedProducts[p.id],
-        };
+      list = list.map((p) => {
+        if (editedProducts[p.id]) {
+          return {
+            ...p,
+            ...editedProducts[p.id],
+          };
+        }
+        return p;
+      });
+
+      if (page === 1 && addedProducts.length > 0) {
+        const activeAdded = addedProducts.filter((p) => !deletedProductIds.includes(p.id));
+        list = [...activeAdded, ...list];
       }
-      return p;
-    });
 
-    // 3. Prepend newly added local products on Page 1
-    if (page === 1 && addedProducts.length > 0) {
-      // Filter out any added items that might have been deleted
-      const activeAdded = addedProducts.filter((p) => !deletedProductIds.includes(p.id));
-      list = [...activeAdded, ...list];
-    }
+      const activeAddedCount = addedProducts.filter((p) => !deletedProductIds.includes(p.id)).length;
+      const netTotal = Math.max(0, totalCount + activeAddedCount - deletedProductIds.length);
 
-    const activeAddedCount = addedProducts.filter((p) => !deletedProductIds.includes(p.id)).length;
-    const netTotal = Math.max(0, totalCount + activeAddedCount - deletedProductIds.length);
+      return {
+        products: list,
+        total: netTotal,
+      };
+    },
+    [addedProducts, editedProducts, deletedProductIds]
+  );
 
-    return {
-      products: list,
-      total: netTotal,
-    };
-  };
+  const getOverlayProductById = useCallback(
+    (id: number): Partial<Product> | null => {
+      const localAdded = addedProducts.find((p) => p.id === id);
+      if (localAdded) return localAdded;
 
-  const getOverlayProductById = (id: number): Partial<Product> | null => {
-    const localAdded = addedProducts.find((p) => p.id === id);
-    if (localAdded) return localAdded;
+      if (editedProducts[id]) {
+        return editedProducts[id];
+      }
 
-    if (editedProducts[id]) {
-      return editedProducts[id];
-    }
+      return null;
+    },
+    [addedProducts, editedProducts]
+  );
 
-    return null;
-  };
-
-  const isDeleted = (id: number): boolean => deletedProductIds.includes(id);
+  const isDeleted = useCallback((id: number): boolean => deletedProductIds.includes(id), [deletedProductIds]);
 
   return (
     <ProductOverlayContext.Provider
