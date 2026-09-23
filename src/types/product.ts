@@ -67,6 +67,7 @@ export interface ProductFilterParams {
   category: string;
   sortBy: SortByOption | '';
   order: SortOrderOption;
+  delay?: number;
 }
 
 export interface ProductFormData {

@@ -9,10 +9,12 @@ interface ProductFiltersProps {
   selectedCategory: string;
   sortBy: SortByOption | '';
   order: SortOrderOption;
+  delay?: number;
   categories: Category[];
   onSearchChange: (query: string) => void;
   onCategoryChange: (category: string) => void;
   onSortChange: (sortBy: SortByOption | '', order: SortOrderOption) => void;
+  onDelayToggle?: (delay?: number) => void;
   onAddProductClick: () => void;
   onClearAll: () => void;
 }
@@ -22,10 +24,12 @@ export default function ProductFilters({
   selectedCategory,
   sortBy,
   order,
+  delay,
   categories,
   onSearchChange,
   onCategoryChange,
   onSortChange,
+  onDelayToggle,
   onAddProductClick,
   onClearAll,
 }: ProductFiltersProps) {
@@ -132,6 +136,21 @@ export default function ProductFilters({
             </select>
           </div>
 
+          {/* Network Delay Test Simulator */}
+          {onDelayToggle && (
+            <button
+              onClick={() => onDelayToggle(delay ? undefined : 2000)}
+              className={`inline-flex items-center space-x-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                delay
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 border-slate-700/80'
+              }`}
+              title="Test AbortController race condition handling with 2s server delay"
+            >
+              <span>{delay ? 'Delay: 2s Active' : 'Simulate Delay'}</span>
+            </button>
+          )}
+
           {/* Add Product Button */}
           <button
             onClick={onAddProductClick}
@@ -144,9 +163,9 @@ export default function ProductFilters({
       </div>
 
       {/* Active Filter Chips / Clear Button */}
-      {hasActiveFilters && (
+      {(hasActiveFilters || delay) && (
         <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs text-slate-400">
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span>Active filters:</span>
             {searchQuery && (
               <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-md font-mono">
@@ -161,6 +180,11 @@ export default function ProductFilters({
             {sortBy && (
               <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-md capitalize">
                 sort: {sortBy} ({order})
+              </span>
+            )}
+            {delay && (
+              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md font-mono">
+                &delay=2000
               </span>
             )}
           </div>

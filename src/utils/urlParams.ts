@@ -39,6 +39,10 @@ export function parseProductParams(searchParams: { [key: string]: string | strin
     ? (rawOrder as SortOrderOption)
     : 'asc';
 
+  // Parse Delay
+  const rawDelay = searchParams.delay;
+  const delay = typeof rawDelay === 'string' ? parseInt(rawDelay, 10) : undefined;
+
   return {
     page,
     limit,
@@ -46,6 +50,7 @@ export function parseProductParams(searchParams: { [key: string]: string | strin
     category,
     sortBy,
     order,
+    delay: delay && !isNaN(delay) && delay > 0 ? delay : undefined,
   };
 }
 
@@ -74,6 +79,10 @@ export function buildQueryString(params: Partial<ProductFilterParams>): string {
 
   if (params.order && params.order !== 'asc') {
     query.set('order', params.order);
+  }
+
+  if (params.delay && params.delay > 0) {
+    query.set('delay', params.delay.toString());
   }
 
   const str = query.toString();

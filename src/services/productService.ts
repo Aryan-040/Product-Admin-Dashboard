@@ -19,6 +19,10 @@ export const productService = {
       skip,
     };
 
+    if (params.delay && params.delay > 0) {
+      queryParams.delay = params.delay;
+    }
+
     // Add sorting if specified
     if (sortBy) {
       queryParams.sortBy = sortBy;

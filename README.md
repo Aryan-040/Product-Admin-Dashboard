@@ -14,8 +14,8 @@ A modern, responsive, production-ready **Product Admin Dashboard** built with **
 
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/your-username/product-admin-dashboard.git
-   cd product-admin-dashboard
+   git clone https://github.com/Aryan-040/Product-Admin-Dashboard.git
+   cd Product-Admin-Dashboard
    ```
 
 2. **Install Dependencies:**
@@ -39,6 +39,17 @@ A modern, responsive, production-ready **Product Admin Dashboard** built with **
 
 ---
 
+## 🌐 Live Deployment Instructions (Vercel & Netlify)
+
+### Deploying to Vercel (Recommended)
+1. Push this repository to your GitHub account (`https://github.com/Aryan-040/Product-Admin-Dashboard`).
+2. Log into [Vercel](https://vercel.com) and click **"Add New Project"**.
+3. Import the `Product-Admin-Dashboard` repository.
+4. Leave build settings as default (`npm run build`, output `.next`).
+5. Click **Deploy**.
+
+---
+
 ## ✅ Completed Features Checklist
 
 - [x] **Shared Axios Client (`lib/axios.ts`)**: Single centralized instance adding `Authorization: Bearer <token>` to requests and handling `401 Unauthorized` token expiry globally.
@@ -48,9 +59,9 @@ A modern, responsive, production-ready **Product Admin Dashboard** built with **
 - [x] **Custom Pagination**: Page numbers, Previous/Next buttons, page size selector (10, 20, 50 items), and text like `"Showing 21–40 of 194"`.
 - [x] **Debounced Search**: Search with `/products/search?q=...` with a 400ms debounce. Automatically resets to page 1 on query change.
 - [x] **Filter & Sort**: Category filter dropdown dynamically loaded from `/products/categories`, and sorting by price, rating, or title.
-- [x] **URL State Synchronization**: `page`, `limit`, `q`, `category`, `sortBy`, and `order` are stored in URL query parameters. Refreshing or sharing link yields identical view state.
+- [x] **URL State Synchronization**: `page`, `limit`, `q`, `category`, `sortBy`, `order`, and `delay` are stored in URL query parameters. Refreshing or sharing link yields identical view state.
 - [x] **URL Param Sanitization**: Handles invalid URL parameters like `?page=abc` or `?page=99999` safely without crashing.
-- [x] **Race Condition Prevention**: Built using Axios `AbortController` and request ID versioning to ensure out-of-order or delayed API responses (`&delay=2000`) never overwrite newer search results.
+- [x] **Race Condition Prevention & Delay Simulator**: Built using Axios `AbortController` and request ID versioning to ensure out-of-order or delayed API responses (`&delay=2000`) never overwrite newer search results. Includes a built-in **"Simulate Delay"** toggle button in the filters bar for easy testing!
 - [x] **Product Details Page (`/products/[id]`)**: Detailed view with gallery thumbnails, price, stock status, specs, customer reviews, and a 404 screen for invalid IDs.
 - [x] **Add, Edit & Delete**: Form modal with validation (title, price, stock, category), delete confirmation modal, and client overlay store so mutations persist locally.
 - [x] **Loading, Empty & Error States**: Skeleton loaders for tables/cards, clear empty state graphics when no products match, and a Retry button for failed API requests.

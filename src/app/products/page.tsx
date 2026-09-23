@@ -234,6 +234,10 @@ function ProductDashboardContent() {
     }
   };
 
+  const handleDelayToggle = (delay?: number) => {
+    updateUrlParams({ delay });
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-16">
       <Header />
@@ -255,10 +259,12 @@ function ProductDashboardContent() {
           selectedCategory={filterParams.category}
           sortBy={filterParams.sortBy}
           order={filterParams.order}
+          delay={filterParams.delay}
           categories={categories}
           onSearchChange={handleSearchChange}
           onCategoryChange={handleCategoryChange}
           onSortChange={handleSortChange}
+          onDelayToggle={handleDelayToggle}
           onAddProductClick={handleOpenAddModal}
           onClearAll={handleClearAll}
         />
