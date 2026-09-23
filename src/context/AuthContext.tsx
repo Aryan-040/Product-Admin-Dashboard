@@ -52,10 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const userData = await authService.login(credentials);
-      setUser(userData);
-      setToken(userData.token);
-      localStorage.setItem('auth_token', userData.token);
-      localStorage.setItem('auth_user', JSON.stringify(userData));
+      const authToken = userData.accessToken || userData.token || 'demo_token';
+      const userWithToken = { ...userData, token: authToken };
+
+      setUser(userWithToken);
+      setToken(authToken);
+      localStorage.setItem('auth_token', authToken);
+      localStorage.setItem('auth_user', JSON.stringify(userWithToken));
       setIsSubmitting(false);
       return true;
     } catch (err: unknown) {
