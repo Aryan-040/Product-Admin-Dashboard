@@ -19,41 +19,37 @@ interface ToastProps {
 export default function Toast({ toast, onClose, duration = 4000 }: ToastProps) {
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => {
-      onClose();
-    }, duration);
-    return () => clearTimeout(timer);
+    const t = setTimeout(onClose, duration);
+    return () => clearTimeout(t);
   }, [toast, onClose, duration]);
 
   if (!toast) return null;
 
-  const icons = {
-    success: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
-    error: <AlertCircle className="w-5 h-5 text-red-400" />,
-    info: <Info className="w-5 h-5 text-indigo-400" />,
-  };
-
-  const borders = {
-    success: 'border-emerald-500/40 bg-emerald-950/90 text-emerald-100',
-    error: 'border-red-500/40 bg-red-950/90 text-red-100',
-    info: 'border-indigo-500/40 bg-indigo-950/90 text-indigo-100',
-  };
+  const cfg = {
+    success: { icon: CheckCircle2, cls: 'bg-surface-raised border-success-border', iconCls: 'text-success' },
+    error:   { icon: AlertCircle,  cls: 'bg-surface-raised border-error-border',   iconCls: 'text-error'   },
+    info:    { icon: Info,         cls: 'bg-surface-raised border-accent-border',   iconCls: 'text-accent'  },
+  }[toast.type];
+  const Icon = cfg.icon;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-      <div
-        className={`flex items-start space-x-3 max-w-sm px-4 py-3 rounded-2xl border shadow-2xl backdrop-blur-md ${borders[toast.type]}`}
-      >
-        <div className="mt-0.5">{icons[toast.type]}</div>
-        <div className="flex-1 pr-2">
-          <h4 className="text-sm font-semibold">{toast.title}</h4>
-          {toast.message && <p className="text-xs opacity-90 mt-0.5">{toast.message}</p>}
+    <div
+      className="fixed bottom-5 right-4 sm:right-5 z-50 w-full max-w-xs"
+      role="status"
+      aria-live="polite"
+    >
+      <div className={`card flex items-start gap-3 px-4 py-3 shadow-lg ${cfg.cls}`}>
+        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${cfg.iconCls}`} aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-text-primary">{toast.title}</p>
+          {toast.message && <p className="text-xs text-text-muted mt-0.5">{toast.message}</p>}
         </div>
         <button
           onClick={onClose}
-          className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+          className="w-5 h-5 flex items-center justify-center rounded text-text-muted hover:text-text-primary transition-colors cursor-pointer shrink-0"
+          aria-label="Dismiss"
         >
-          <X className="w-4 h-4" />
+          <X className="w-3.5 h-3.5" aria-hidden="true" />
         </button>
       </div>
     </div>

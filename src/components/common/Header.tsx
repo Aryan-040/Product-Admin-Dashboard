@@ -3,59 +3,75 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { Package, LogOut, User as UserIcon } from 'lucide-react';
+import { LayoutGrid, LogOut } from 'lucide-react';
+import ThemeToggle from '@/components/common/ThemeToggle';
 
 export default function Header() {
   const { user, logout } = useAuth();
 
+  const initials = user
+    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
+    : '';
+
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md text-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Brand / Logo */}
-        <Link href="/products" className="flex items-center space-x-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-            <Package className="w-5 h-5 text-white" />
+    <header className="sticky top-0 z-40 border-b border-border bg-surface-raised h-14 flex items-center">
+      <div className="w-full px-4 flex items-center justify-between gap-4">
+
+        {/* Logo */}
+        <Link
+          href="/products"
+          className="flex items-center gap-2 shrink-0 focus-visible:outline-none"
+        >
+          <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center shrink-0">
+            <LayoutGrid className="w-3.5 h-3.5 text-white" aria-hidden="true" />
           </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              CatalogHub
-            </h1>
-            <p className="text-xs text-slate-400 font-mono hidden sm:block">Admin Console</p>
-          </div>
+          <span className="text-sm font-semibold text-text-primary tracking-tight whitespace-nowrap">
+            CatalogHub
+          </span>
+          <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-inset text-text-muted border border-border leading-none">
+            Admin
+          </span>
         </Link>
 
-        {/* User Info & Actions */}
-        {user && (
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700/60">
-              {user.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={user.image}
-                  alt={user.firstName}
-                  className="w-7 h-7 rounded-full object-cover border border-indigo-400"
-                />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-semibold text-white">
-                  <UserIcon className="w-4 h-4" />
-                </div>
-              )}
-              <div className="text-xs text-left">
-                <p className="font-semibold text-slate-200">{user.firstName} {user.lastName}</p>
-                <p className="text-slate-400 font-mono text-[10px]">@{user.username}</p>
-              </div>
-            </div>
+        {/* Right side */}
+        <div className="flex items-center gap-2 shrink-0">
+          <ThemeToggle />
 
-            <button
-              onClick={logout}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-red-400 bg-slate-800/60 hover:bg-red-500/10 border border-slate-700 hover:border-red-500/30 rounded-lg transition-colors cursor-pointer"
-              title="Log out of application"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-          </div>
-        )}
+          {user && (
+            <>
+              <div className="hidden sm:flex items-center gap-2.5 pl-2 border-l border-border">
+                {user.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.image}
+                    alt={`${user.firstName} ${user.lastName}`}
+                    className="w-7 h-7 rounded-full object-cover ring-1 ring-border"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-[11px] font-bold text-white shrink-0 select-none">
+                    {initials}
+                  </div>
+                )}
+                <div className="leading-tight">
+                  <p className="text-[13px] font-medium text-text-primary leading-none">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-[11px] text-text-muted mt-0.5">@{user.username}</p>
+                </div>
+              </div>
+
+              <button
+                onClick={logout}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-muted hover:text-error rounded-lg hover:bg-error-surface transition-colors cursor-pointer"
+                aria-label="Sign out"
+                title="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -18,191 +18,90 @@ import { useProductOverlay } from '@/context/ProductOverlayContext';
 import { productService } from '@/services/productService';
 import { Product, Category, ProductFormData, SortByOption, SortOrderOption } from '@/types/product';
 import { parseProductParams, buildQueryString } from '@/utils/urlParams';
+import { Plus, Search } from 'lucide-react';
 
 function ProductDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  // Parse URL search parameters safely
   const rawParams = Object.fromEntries(searchParams.entries());
   const filterParams = parseProductParams(rawParams);
 
   const { mergeWithOverlay, addLocalProduct, updateLocalProduct, deleteLocalProduct } = useProductOverlay();
 
-  // Local state
   const [products, setProducts] = useState<Product[]>([]);
   const [totalItems, setTotalItems] = useState<number>(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modals state
-  const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Toast Notification
   const [toast, setToast] = useState<ToastMessage | null>(null);
-
-  // Ref to track latest request sequence to prevent race conditions
   const requestIdRef = useRef<number>(0);
 
-  // Fetch Category List once on mount
   useEffect(() => {
-    let isMounted = true;
-    async function loadCategories() {
-      try {
-        const catList = await productService.getCategories();
-        if (isMounted) {
-          setCategories(catList);
-        }
-      } catch (err) {
-        console.error('Failed to load categories:', err);
-      }
-    }
-    loadCategories();
-    return () => {
-      isMounted = false;
-    };
+    let alive = true;
+    productService.getCategories()
+      .then((cats) => { if (alive) setCategories(cats); })
+      .catch(() => {});
+    return () => { alive = false; };
   }, []);
 
   const { page, limit, q, category, sortBy, order, delay } = filterParams;
 
-  // Fetch Products function with AbortController for race condition protection
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
     const controller = new AbortController();
-    const currentRequestId = ++requestIdRef.current;
-
+    const rid = ++requestIdRef.current;
     try {
-      const data = await productService.getProducts(
-        { page, limit, q, category, sortBy, order, delay },
-        controller.signal
-      );
-
-      // Only update state if this is still the latest request
-      if (currentRequestId === requestIdRef.current) {
-        // Merge API results with client local overlay (adds/edits/deletes)
-        const { products: mergedList, total: mergedTotal } = mergeWithOverlay(
-          data.products,
-          data.total,
-          page
-        );
-
-        setProducts(mergedList);
-        setTotalItems(mergedTotal);
+      const data = await productService.getProducts({ page, limit, q, category, sortBy, order, delay }, controller.signal);
+      if (rid === requestIdRef.current) {
+        const { products: list, total } = mergeWithOverlay(data.products, data.total, page);
+        setProducts(list);
+        setTotalItems(total);
         setIsLoading(false);
       }
     } catch (err: unknown) {
-      if (currentRequestId === requestIdRef.current) {
-        if (err && typeof err === 'object' && 'name' in err && err.name === 'CanceledError') {
-          // Request was aborted by rapid typing - ignore
-          return;
-        }
-        console.error('Error fetching products:', err);
-        setError('Unable to connect to DummyJSON server. Please try again.');
+      if (rid === requestIdRef.current) {
+        if (err && typeof err === 'object' && 'name' in err && (err as { name: string }).name === 'CanceledError') return;
+        setError('Unable to connect to DummyJSON. Please try again.');
         setIsLoading(false);
       }
     }
   }, [page, limit, q, category, sortBy, order, delay, mergeWithOverlay]);
 
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  // URL Parameter Update Handlers
-  const updateUrlParams = (newParams: Partial<typeof filterParams>) => {
-    const updated = { ...filterParams, ...newParams };
-    const query = buildQueryString(updated);
-    router.push(`/products${query}`);
+  const push = (p: Partial<typeof filterParams>) => {
+    router.push(`/products${buildQueryString({ ...filterParams, ...p })}`);
   };
 
-  const handleSearchChange = (query: string) => {
-    // Reset to page 1 when search changes
-    updateUrlParams({ q: query, page: 1 });
-  };
-
-  const handleCategoryChange = (category: string) => {
-    // Reset to page 1 when category filter changes
-    updateUrlParams({ category, page: 1 });
-  };
-
-  const handleSortChange = (sortBy: SortByOption | '', order: SortOrderOption) => {
-    updateUrlParams({ sortBy, order });
-  };
-
-  const handlePageChange = (newPage: number) => {
-    updateUrlParams({ page: newPage });
-  };
-
-  const handlePageSizeChange = (newSize: number) => {
-    updateUrlParams({ limit: newSize, page: 1 });
-  };
-
-  const handleClearAll = () => {
-    router.push('/products');
-  };
-
-  // Add / Edit Handlers
-  const handleOpenAddModal = () => {
-    setProductToEdit(null);
-    setIsFormModalOpen(true);
-  };
-
-  const handleOpenEditModal = (product: Product) => {
-    setProductToEdit(product);
-    setIsFormModalOpen(true);
-  };
-
-  const handleFormSubmit = async (formData: ProductFormData) => {
+  const handleFormSubmit = async (data: ProductFormData) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-
     try {
       if (productToEdit) {
-        // Edit product
-        await productService.updateProduct(productToEdit.id, formData);
-        updateLocalProduct(productToEdit.id, formData);
-        setToast({
-          id: Date.now().toString(),
-          type: 'success',
-          title: 'Product Updated',
-          message: `"${formData.title}" has been updated successfully.`,
-        });
+        await productService.updateProduct(productToEdit.id, data);
+        updateLocalProduct(productToEdit.id, data);
+        setToast({ id: Date.now().toString(), type: 'success', title: 'Product updated', message: `"${data.title}" saved.` });
       } else {
-        // Add new product
-        const apiResult = await productService.addProduct(formData);
-        addLocalProduct(formData, apiResult);
-        setToast({
-          id: Date.now().toString(),
-          type: 'success',
-          title: 'Product Added',
-          message: `"${formData.title}" has been added to your dashboard.`,
-        });
+        const res = await productService.addProduct(data);
+        addLocalProduct(data, res);
+        setToast({ id: Date.now().toString(), type: 'success', title: 'Product added', message: `"${data.title}" added to catalog.` });
       }
-
       setIsFormModalOpen(false);
-      fetchProducts(); // Refresh list view
-    } catch (err) {
-      console.error('Save product error:', err);
-      // Fallback local persistence even if DummyJSON API fails
-      if (productToEdit) {
-        updateLocalProduct(productToEdit.id, formData);
-      } else {
-        addLocalProduct(formData);
-      }
-      setToast({
-        id: Date.now().toString(),
-        type: 'info',
-        title: productToEdit ? 'Updated Locally' : 'Saved Locally',
-        message: 'Saved to client overlay state.',
-      });
+      fetchProducts();
+    } catch {
+      if (productToEdit) updateLocalProduct(productToEdit.id, data);
+      else addLocalProduct(data);
+      setToast({ id: Date.now().toString(), type: 'info', title: 'Saved locally', message: 'API unavailable - saved in session.' });
       setIsFormModalOpen(false);
       fetchProducts();
     } finally {
@@ -210,113 +109,128 @@ function ProductDashboardContent() {
     }
   };
 
-  // Delete Handlers
-  const handleOpenDeleteModal = (product: Product) => {
-    setProductToDelete(product);
-    setIsDeleteModalOpen(true);
-  };
-
   const handleDeleteConfirm = async () => {
     if (!productToDelete || isDeleting) return;
     setIsDeleting(true);
-
-    try {
-      await productService.deleteProduct(productToDelete.id);
-    } catch (err) {
-      console.error('Delete product API error (fallback to local):', err);
-    } finally {
-      deleteLocalProduct(productToDelete.id);
-      setIsDeleting(false);
-      setIsDeleteModalOpen(false);
-      setToast({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Product Deleted',
-        message: `"${productToDelete.title}" was deleted.`,
-      });
-      setProductToDelete(null);
-      fetchProducts();
-    }
-  };
-
-  const handleDelayToggle = (delay?: number) => {
-    updateUrlParams({ delay });
+    try { await productService.deleteProduct(productToDelete.id); } catch { /* ignore */ }
+    deleteLocalProduct(productToDelete.id);
+    setIsDeleting(false);
+    setIsDeleteModalOpen(false);
+    setToast({ id: Date.now().toString(), type: 'error', title: 'Deleted', message: `"${productToDelete.title}" removed.` });
+    setProductToDelete(null);
+    fetchProducts();
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-16">
+    <div className="min-h-screen bg-surface pb-16">
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        {/* Page Title Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-white">Product Catalog</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Manage inventory, prices, search and filters in real-time
-            </p>
-          </div>
+      <div className="px-4 pt-3">
+        {/* Page title */}
+        <div className="mb-3">
+          <h1 className="text-lg font-semibold text-text-primary leading-none">Products</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            {!isLoading && totalItems > 0 ? `${totalItems.toLocaleString()} items` : 'Your catalog'}
+          </p>
         </div>
 
-        {/* Filters & Actions Bar */}
-        <ProductFilters
-          searchQuery={filterParams.q}
-          selectedCategory={filterParams.category}
-          sortBy={filterParams.sortBy}
-          order={filterParams.order}
-          delay={filterParams.delay}
-          categories={categories}
-          onSearchChange={handleSearchChange}
-          onCategoryChange={handleCategoryChange}
-          onSortChange={handleSortChange}
-          onDelayToggle={handleDelayToggle}
-          onAddProductClick={handleOpenAddModal}
-          onClearAll={handleClearAll}
-        />
+        {/* Two-column layout: sidebar filters + main content */}
+        <div className="flex gap-5 items-start">
 
-        {/* Main Content Area: Loading, Error, Empty, or Data Views */}
-        {isLoading ? (
-          <div>
-            <div className="hidden md:block">
-              <TableSkeleton rows={filterParams.limit > 10 ? 8 : 5} />
+          {/* Left sidebar — filters (desktop only; mobile handled inside component) */}
+          <aside className="hidden md:block w-56 shrink-0 sticky top-20">
+            <ProductFilters
+              searchQuery={filterParams.q}
+              selectedCategory={filterParams.category}
+              sortBy={filterParams.sortBy}
+              order={filterParams.order}
+              delay={filterParams.delay}
+              categories={categories}
+              onSearchChange={(q) => push({ q, page: 1 })}
+              onCategoryChange={(category) => push({ category, page: 1 })}
+              onSortChange={(sortBy, order) => push({ sortBy, order })}
+              onDelayToggle={(d) => push({ delay: d })}
+              onAddProductClick={() => { setProductToEdit(null); setIsFormModalOpen(true); }}
+              onClearAll={() => router.push('/products')}
+            />
+          </aside>
+
+          {/* Main content */}
+          <main className="flex-1 min-w-0">
+            {/* Toolbar: search + add product */}
+            <div className="hidden md:flex items-center gap-3 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" aria-hidden="true" />
+                <input
+                  type="text"
+                  value={filterParams.q}
+                  onChange={(e) => push({ q: e.target.value, page: 1 })}
+                  placeholder="Search products…"
+                  aria-label="Search products"
+                  className="w-full h-9 pl-9 pr-3 bg-surface-raised border border-border rounded-lg text-sm text-text-primary placeholder:text-text-placeholder outline-none focus:border-accent focus:ring-2 focus:ring-[var(--focus-ring)] transition-colors"
+                />
+              </div>
+              <button
+                onClick={() => { setProductToEdit(null); setIsFormModalOpen(true); }}
+                className="btn-primary text-sm shrink-0"
+              >
+                <Plus className="w-4 h-4" aria-hidden="true" />
+                Add product
+              </button>
             </div>
-            <div className="md:hidden">
-              <CardSkeleton cards={4} />
+
+            {/* Mobile filters */}
+            <div className="md:hidden mb-4">
+              <ProductFilters
+                searchQuery={filterParams.q}
+                selectedCategory={filterParams.category}
+                sortBy={filterParams.sortBy}
+                order={filterParams.order}
+                delay={filterParams.delay}
+                categories={categories}
+                onSearchChange={(q) => push({ q, page: 1 })}
+                onCategoryChange={(category) => push({ category, page: 1 })}
+                onSortChange={(sortBy, order) => push({ sortBy, order })}
+                onDelayToggle={(d) => push({ delay: d })}
+                onAddProductClick={() => { setProductToEdit(null); setIsFormModalOpen(true); }}
+                onClearAll={() => router.push('/products')}
+              />
             </div>
-          </div>
-        ) : error ? (
-          <ErrorState onRetry={fetchProducts} message={error} />
-        ) : products.length === 0 ? (
-          <EmptyState onClearFilters={handleClearAll} />
-        ) : (
-          <div>
-            {/* Desktop Table View */}
-            <ProductTable
-              products={products}
-              onEdit={handleOpenEditModal}
-              onDelete={handleOpenDeleteModal}
-            />
 
-            {/* Mobile Cards View */}
-            <ProductCards
-              products={products}
-              onEdit={handleOpenEditModal}
-              onDelete={handleOpenDeleteModal}
-            />
+            {isLoading ? (
+              <>
+                <div className="hidden md:block"><TableSkeleton rows={filterParams.limit > 10 ? 8 : 5} /></div>
+                <div className="md:hidden"><CardSkeleton cards={4} /></div>
+              </>
+            ) : error ? (
+              <ErrorState onRetry={fetchProducts} message={error} />
+            ) : products.length === 0 ? (
+              <EmptyState onClearFilters={() => router.push('/products')} />
+            ) : (
+              <>
+                <ProductTable
+                  products={products}
+                  onEdit={(p) => { setProductToEdit(p); setIsFormModalOpen(true); }}
+                  onDelete={(p) => { setProductToDelete(p); setIsDeleteModalOpen(true); }}
+                />
+                <ProductCards
+                  products={products}
+                  onEdit={(p) => { setProductToEdit(p); setIsFormModalOpen(true); }}
+                  onDelete={(p) => { setProductToDelete(p); setIsDeleteModalOpen(true); }}
+                />
+                <Pagination
+                  currentPage={filterParams.page}
+                  totalItems={totalItems}
+                  pageSize={filterParams.limit}
+                  onPageChange={(p) => push({ page: p })}
+                  onPageSizeChange={(l) => push({ limit: l, page: 1 })}
+                />
+              </>
+            )}
+          </main>
+        </div>
+      </div>
 
-            {/* Custom Pagination Bar */}
-            <Pagination
-              currentPage={filterParams.page}
-              totalItems={totalItems}
-              pageSize={filterParams.limit}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-            />
-          </div>
-        )}
-      </main>
-
-      {/* Add / Edit Form Modal */}
       <ProductFormModal
         isOpen={isFormModalOpen}
         productToEdit={productToEdit}
@@ -326,17 +240,15 @@ function ProductDashboardContent() {
         onClose={() => setIsFormModalOpen(false)}
       />
 
-      {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        title="Delete Product"
-        message={`Are you sure you want to delete "${productToDelete?.title}"? This will remove it from your product list.`}
+        title="Delete product"
+        message={`Remove "${productToDelete?.title}" from your catalog? This cannot be undone.`}
         isDeleting={isDeleting}
         onConfirm={handleDeleteConfirm}
         onClose={() => setIsDeleteModalOpen(false)}
       />
 
-      {/* Toast Notification */}
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
@@ -346,8 +258,8 @@ export default function ProductsPage() {
   return (
     <ProtectedRoute>
       <Suspense fallback={
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-          <p className="text-sm font-medium text-slate-400">Loading catalog...</p>
+        <div className="min-h-screen bg-surface flex items-center justify-center">
+          <p className="text-sm text-text-muted">Loading...</p>
         </div>
       }>
         <ProductDashboardContent />

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Category, SortByOption, SortOrderOption } from '@/types/product';
-import { Search, X, Filter, ArrowUpDown, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 
 interface ProductFiltersProps {
   searchQuery: string;
@@ -19,183 +19,162 @@ interface ProductFiltersProps {
   onClearAll: () => void;
 }
 
+const SORT_OPTIONS = [
+  { value: '',           label: 'Default'          },
+  { value: 'price-asc',  label: 'Price: Low–High'  },
+  { value: 'price-desc', label: 'Price: High–Low'  },
+  { value: 'rating-desc',label: 'Top rated'        },
+  { value: 'title-asc',  label: 'Name: A–Z'        },
+  { value: 'title-desc', label: 'Name: Z–A'        },
+];
+
+function Section({ title, children, defaultOpen = true }: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-border last:border-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between py-3 px-4 text-xs font-semibold text-text-secondary uppercase tracking-wider hover:text-text-primary transition-colors cursor-pointer"
+      >
+        {title}
+        {open
+          ? <ChevronUp className="w-3.5 h-3.5 text-text-muted" aria-hidden="true" />
+          : <ChevronDown className="w-3.5 h-3.5 text-text-muted" aria-hidden="true" />
+        }
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  );
+}
+
 export default function ProductFilters({
-  searchQuery,
-  selectedCategory,
-  sortBy,
-  order,
-  delay,
-  categories,
-  onSearchChange,
-  onCategoryChange,
-  onSortChange,
-  onDelayToggle,
-  onAddProductClick,
+  searchQuery, selectedCategory, sortBy, order, delay, categories,
+  onSearchChange, onCategoryChange, onSortChange, onDelayToggle,
   onClearAll,
 }: ProductFiltersProps) {
-  // Local input state for immediate typing response, debounced before firing parent callback
-  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
-    setLocalSearch(searchQuery);
-  }, [searchQuery]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearch !== searchQuery) {
-        onSearchChange(localSearch);
-      }
-    }, 400); // 400ms debounce delay
-
-    return () => clearTimeout(timer);
-  }, [localSearch, searchQuery, onSearchChange]);
-
-  const handleSortSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (!value) {
-      onSortChange('', 'asc');
-      return;
-    }
-    const [field, sortOrder] = value.split('-') as [SortByOption, SortOrderOption];
-    onSortChange(field, sortOrder);
-  };
 
   const sortValue = sortBy ? `${sortBy}-${order}` : '';
+  const activeCount = [searchQuery, selectedCategory, sortBy].filter(Boolean).length;
 
-  const hasActiveFilters = Boolean(searchQuery || selectedCategory || sortBy);
+  const handleSortSelect = (value: string) => {
+    if (!value) { onSortChange('', 'asc'); return; }
+    const [field, ord] = value.split('-') as [SortByOption, SortOrderOption];
+    onSortChange(field, ord);
+  };
 
-  return (
-    <div className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-lg space-y-4 mb-6">
-      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-        {/* Search Input with Debounce */}
-        <div className="relative flex-1">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-            <Search className="w-4 h-4" />
-          </div>
-          <input
-            type="text"
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder="Search products by title, brand..."
-            className="w-full pl-10 pr-10 py-2.5 bg-slate-800/80 border border-slate-700/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-sm text-slate-100 placeholder-slate-400 outline-none transition-all"
-          />
-          {localSearch && (
+  const sidebarContent = (
+    <div className="card overflow-hidden">
+
+      {/* Sort */}
+      <Section title="Sort by">
+        <div className="space-y-1">
+          {SORT_OPTIONS.map((opt) => (
             <button
-              onClick={() => {
-                setLocalSearch('');
-                onSearchChange('');
-              }}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Filters & Sort Controls */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Category Dropdown */}
-          <div className="relative min-w-[160px] flex-1 sm:flex-none">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-              <Filter className="w-3.5 h-3.5" />
-            </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => onCategoryChange(e.target.value)}
-              className="w-full pl-9 pr-8 py-2.5 bg-slate-800/80 border border-slate-700/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-medium text-slate-200 outline-none appearance-none cursor-pointer capitalize"
-            >
-              <option value="">All Categories</option>
-              {categories.map((cat) => {
-                const name = typeof cat === 'string' ? cat : cat.name;
-                const slug = typeof cat === 'string' ? cat : cat.slug;
-                return (
-                  <option key={slug} value={slug} className="bg-slate-900 capitalize">
-                    {name}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Sort Dropdown */}
-          <div className="relative min-w-[170px] flex-1 sm:flex-none">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-              <ArrowUpDown className="w-3.5 h-3.5" />
-            </div>
-            <select
-              value={sortValue}
-              onChange={handleSortSelect}
-              className="w-full pl-9 pr-8 py-2.5 bg-slate-800/80 border border-slate-700/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-medium text-slate-200 outline-none appearance-none cursor-pointer"
-            >
-              <option value="">Default Sort</option>
-              <option value="price-asc" className="bg-slate-900">Price: Low to High</option>
-              <option value="price-desc" className="bg-slate-900">Price: High to Low</option>
-              <option value="rating-desc" className="bg-slate-900">Rating: High to Low</option>
-              <option value="title-asc" className="bg-slate-900">Title: A to Z</option>
-              <option value="title-desc" className="bg-slate-900">Title: Z to A</option>
-            </select>
-          </div>
-
-          {/* Network Delay Test Simulator */}
-          {onDelayToggle && (
-            <button
-              onClick={() => onDelayToggle(delay ? undefined : 2000)}
-              className={`inline-flex items-center space-x-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                delay
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 border-slate-700/80'
+              key={opt.value}
+              onClick={() => handleSortSelect(opt.value)}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer ${
+                sortValue === opt.value
+                  ? 'bg-accent-surface text-accent-text font-medium'
+                  : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
               }`}
-              title="Test AbortController race condition handling with 2s server delay"
             >
-              <span>{delay ? 'Delay: 2s Active' : 'Simulate Delay'}</span>
+              {opt.label}
             </button>
-          )}
-
-          {/* Add Product Button */}
-          <button
-            onClick={onAddProductClick}
-            className="inline-flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/25 transition-all duration-150 cursor-pointer active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Product</span>
-          </button>
+          ))}
         </div>
-      </div>
+      </Section>
 
-      {/* Active Filter Chips / Clear Button */}
-      {(hasActiveFilters || delay) && (
-        <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs text-slate-400">
-          <div className="flex flex-wrap items-center gap-2">
-            <span>Active filters:</span>
-            {searchQuery && (
-              <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-md font-mono">
-                q: {searchQuery}
-              </span>
-            )}
-            {selectedCategory && (
-              <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-md capitalize">
-                category: {selectedCategory}
-              </span>
-            )}
-            {sortBy && (
-              <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-md capitalize">
-                sort: {sortBy} ({order})
-              </span>
-            )}
-            {delay && (
-              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md font-mono">
-                &delay=2000
-              </span>
-            )}
-          </div>
+      {/* Category */}
+      <Section title="Category">
+        <div className="space-y-1">
+          <button
+            onClick={() => onCategoryChange('')}
+            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer ${
+              selectedCategory === ''
+                ? 'bg-accent-surface text-accent-text font-medium'
+                : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+            }`}
+          >
+            All categories
+          </button>
+          {categories.map((cat) => {
+            const name = typeof cat === 'string' ? cat : cat.name;
+            const slug = typeof cat === 'string' ? cat : cat.slug;
+            return (
+              <button
+                key={slug}
+                onClick={() => onCategoryChange(slug)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm capitalize transition-colors cursor-pointer ${
+                  selectedCategory === slug
+                    ? 'bg-accent-surface text-accent-text font-medium'
+                    : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+                }`}
+              >
+                {name}
+              </button>
+            );
+          })}
+        </div>
+      </Section>
+
+      {/* Dev tools */}
+      {onDelayToggle && (
+        <Section title="Dev tools" defaultOpen={false}>
+          <button
+            onClick={() => onDelayToggle(delay ? undefined : 2000)}
+            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer ${
+              delay
+                ? 'bg-warning-surface text-warning-text'
+                : 'text-text-secondary hover:bg-surface-hover'
+            }`}
+          >
+            {delay ? '2s delay: on' : 'Simulate slow network'}
+          </button>
+        </Section>
+      )}
+
+      {/* Clear */}
+      {activeCount > 0 && (
+        <div className="p-4 border-t border-border">
           <button
             onClick={onClearAll}
-            className="text-slate-400 hover:text-white underline text-xs transition-colors cursor-pointer"
+            className="w-full text-sm text-text-muted hover:text-error transition-colors cursor-pointer text-center"
           >
-            Clear all
+            Clear all filters
           </button>
         </div>
       )}
     </div>
+  );
+
+  return (
+    <>
+      {/* Mobile toggle button */}
+      <div className="md:hidden mb-3">
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="btn-ghost text-sm w-full justify-between"
+        >
+          <span className="flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
+            Filters {activeCount > 0 && <span className="inline-flex w-4 h-4 items-center justify-center rounded-full bg-accent text-white text-[10px] font-bold">{activeCount}</span>}
+          </span>
+          {mobileOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+        {mobileOpen && <div className="mt-3">{sidebarContent}</div>}
+      </div>
+
+      {/* Desktop sidebar — rendered by parent layout, just export the content */}
+      <div className="hidden md:block">
+        {sidebarContent}
+      </div>
+    </>
   );
 }

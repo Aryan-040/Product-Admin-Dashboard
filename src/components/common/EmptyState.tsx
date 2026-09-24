@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { PackageSearch, XCircle } from 'lucide-react';
+import { PackageSearch, X } from 'lucide-react';
 
 interface EmptyStateProps {
   title?: string;
@@ -11,25 +11,22 @@ interface EmptyStateProps {
 
 export default function EmptyState({
   title = 'No products found',
-  message = 'We could not find any products matching your search criteria or category filter.',
+  message = "Nothing matches your current filters. Try adjusting your search or clearing the filters.",
   onClearFilters,
 }: EmptyStateProps) {
   return (
-    <div className="w-full my-8 p-10 rounded-2xl bg-slate-800/40 border border-slate-700/60 text-center flex flex-col items-center justify-center space-y-4">
-      <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
-        <PackageSearch className="w-7 h-7" />
+    <div className="card p-10 text-center flex flex-col items-center gap-4 my-6">
+      <div className="w-10 h-10 rounded-xl bg-surface-inset border border-border flex items-center justify-center text-text-muted">
+        <PackageSearch className="w-5 h-5" aria-hidden="true" />
       </div>
       <div>
-        <h3 className="text-lg font-bold text-slate-200">{title}</h3>
-        <p className="text-sm text-slate-400 max-w-md mt-1">{message}</p>
+        <p className="text-sm font-medium text-text-primary">{title}</p>
+        <p className="text-sm text-text-muted mt-1 max-w-xs mx-auto">{message}</p>
       </div>
       {onClearFilters && (
-        <button
-          onClick={onClearFilters}
-          className="inline-flex items-center space-x-2 px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-colors cursor-pointer"
-        >
-          <XCircle className="w-4 h-4" />
-          <span>Clear All Filters</span>
+        <button onClick={onClearFilters} className="btn-ghost text-sm">
+          <X className="w-3.5 h-3.5" aria-hidden="true" />
+          Clear filters
         </button>
       )}
     </div>
